@@ -1,0 +1,104 @@
+This document has information regarding the contents of this folder.
+
+Copyrights 
+	Molecular parasitology lab , Department of 
+	Bioscience and Bioengineering, IIT Bombay, 
+	Mumbai,India.
+
+
+-----------------------Folder-Info--------------------------
+
+
+---------------Training and testing datasets----------------
+
+This folder contains datasets used in testing and training 
+of sORF finder and ORFpred.
+
+-------------------ORFpred predicted dataset------------------
+
+This folder contains files of translatable smORFs and uORFs
+predicting using ORFPred.
+
+# All the ORF shown in the fasta files in this directory are 
+present with 350 bases in 5'UTR and 100 bases in 3'UTR
+
+
+-----------------------Program Codes---------------------------
+
+This folder contains three programs
+
+1. ORFpy.py
+2. Automated_ORFpred.py
+3. Sequence_shuffler.py
+
+These programs help in identification of translatable smORFs
+
+Requirements to run these programs:
+
+-- python ver 2.7
+-- Python modules - mlpy (mlpy.sourceforge.net/) (ver 3.5.0)
+		  - numpy(www.numpy.org) (ver 1.8.2)
+   		  - Bio(www.biopython.org/) (1.62)
+
+-------------------------------------------------------------
+-------------------Execution of program-----------------------
+
+In terminal enter the command 
+
+python ORFpy.py
+python Sequence_shuffler.py
+python Automated_ORFpred.py
+
+-------------------------------------------------------------
+-------------Training and predicting using ORFpred-----------
+
+1) Isolation of ORFs for training.
+
+	--Download CDS regions from the database with 5' and 
+	  3'UTR regions
+	--To get negative training example 1) Download nc-RNA
+	  from database isolate ORFs using ORFpy.py 2) Use
+	  Sequence_shuffler.py to make random genome from the
+	  genome downloaded from database, use ORFpy to isolate
+	  ORFs from the random genome. 
+
+# Make sure 5'and 3' UTR lenghts are same in positive and negative 
+  example
+
+2) Training the model.
+
+	-- Run the program Automated_ORFpred.py
+	-- Select option : Training
+	-- Give input files for CDS , nORFs and Random ORFs
+
+# To change the features of the classifier open the file 
+Automated_ORFpred.py in a text editor and change the parameters 
+as per requirements.
+
+3) Predicting translatability using trained model.
+
+	-- Run the program Automated_ORFpred.py
+	-- Select option : Prediction
+	-- Give input file for trained model
+	-- Give input file of ORFs to be predicted in fasta format
+
+# Make sure 5'and 3' UTR lenghts of the input ORFs are same as in 
+  training ORFs.
+
+4) Getting weights for feature analysis
+	
+	-- Run the program Automated_ORFpred.py
+	-- Select option : Weights analysis
+	-- Give input files for CDS , nORFs and Random ORFs.
+	-- Select options for the type of features to be analysed
+	
+5) Generate thresholds
+
+	-- Run the program Automated_ORFpred.py
+	-- Select option : Simulate expected frequencies
+	-- Give input for location of trained model folder, number of runs
+	   to simulate and output folder
+	-- After the simulation paste the "expected_values.csv" file into the Modules folder
+
+-------------------------------------------------------------
+-------------------------------------------------------------

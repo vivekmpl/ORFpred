@@ -1,0 +1,108 @@
+# training and testing
+
+import csv , mlpy
+from Bio import SeqIO
+import numpy as np
+import rocarea
+import matplotlib.pyplot as plt
+import random
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+
+fet_ex_type = "u" #raw_input("What is the type of feature ectractor required ?\n\
+#if Compositional type C, if Positional P , if Only Utr type U, if Both type B")
+if fet_ex_type in ["C","c"]:
+    import get_features_comp
+if fet_ex_type in ["P", "p"]:
+    import get_features_pos
+if fet_ex_type in ["B","b"]:
+    import get_features_comp
+if fet_ex_type in ["U","u"]:
+    import get_features_pos_only_utr
+
+fet_ex_type_2 = "c" #raw_input("What is the type of feature ectractor required ?\n\
+#if Compositional type C, if Positional P , if Only Utr type U, if Both type B")
+if fet_ex_type_2 in ["C","c"]:
+    import get_features_comp
+if fet_ex_type_2 in ["P", "p"]:
+    import get_features_pos
+if fet_ex_type_2 in ["B","b"]:
+    import get_features_comp
+if fet_ex_type_2 in ["U","u"]:
+    import get_features_pos_only_utr
+
+#define vetorize
+def vectorize_set_value2(j):
+    for n , i in enumerate(j):
+        try:
+            float(i)
+        except:
+            if i == 'A':
+                j[n] = 1.0
+            if i == 'T':
+                j[n] = 2.0
+            if i == 'G':
+                j[n] = 3.0
+            if i == 'C':
+                j[n] = 4.0
+            if i == 'TGA':
+                j[n] = -1.0
+            if i == 'TAG':
+                j[n] = -2.0
+            if i == 'TAA':
+                j[n] = 3.0
+            if i == 'N':
+                j[n] = 0.0
+            if i not in ['A','T','G','C','TGA','TAG','TAA']:
+                j[n] = 0.0
+    return j
+
+#read features and get training sets with classes
+
+def select_fet2(fet_index, seq, clas):
+    feature_selected = []
+    fet_lis = get_features.get_fet_predictor(seq)
+    for i in fet_index:
+        feature_selected.append(fet_lis[i])
+    #print len(feature_selected)
+    return vectorize_set_value2(feature_selected)+[clas]
+
+def select_fet2_pred(seq , type_fet):
+    if type_fet in ["Comp" , "composition", "c","C"]:
+        fet_lis = get_features_comp.get_fet_predictor(seq)
+    #print len(feature_selected)
+    elif type_fet in ["pos", "positional", "p", "P"]:
+        fet_lis = get_features_pos.get_fet_predictor(seq)
+    elif type_fet in ["Both","B","b"]:
+        fet_lis = get_features_pos.get_fet_predictor(seq)
+    elif type_fet in ["UTR", "utr", "u", "U", "only utr"]:
+        fet_lis = get_features_pos_only_utr.get_fet_predictor(seq)
+    return vectorize_set_value2(fet_lis)
+#--------------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------------------
+#- - -- -------------------------------------------------------------------------------------------------------------------
+                  
+def split_model_get_preds(in_seq, model_pos, model_comp , model_split):
+    fets = [select_fet2_pred(in_seq, fet_ex_type),select_fet2_pred(in_seq,fet_ex_type_2)]
+    in_seqs_probables = []
+    in_seqs_probables.append([model_pos.pred_probability(fets[0])[1] , model_comp.pred_probability(fets[1])[1]])
+    return in_seqs_probables[0][:2] + [model_split.pred_probability(in_seqs_probables[0])[0]]
+
+def split_model_predictor_fast (in_file, logit_pos , logit_comp , logit_cds , temp_file):
+    logit_pos = mlpy.LibLinear.load_model(logit_pos)
+    logit_comp = mlpy.LibLinear.load_model(logit_comp)
+    logit_cds = mlpy.LibLinear.load_model(logit_cds)
+    #  return lists
+    scores_list = []
+    # - - - - - - - - - - - -
+    for i in SeqIO.parse(in_file, "fasta"):
+        try:
+            k = split_model_get_preds(i , logit_pos , logit_comp, logit_cds)
+            scores_list.append([k[0] , k[1] , k[2], len(i.seq)-5])
+        except:
+            pass
+    # - - - - - -  - - - -- - - -
+    csvwriter = csv.writer(temp_file)
+    csvwriter.writerows(scores_list)
+    print "Program End"

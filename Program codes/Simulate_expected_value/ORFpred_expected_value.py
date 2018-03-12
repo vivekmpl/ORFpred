@@ -1,0 +1,145 @@
+""" This is a set of program ensemble used in predicting
+translatable ORFs Program is made using  distributions
+from BioPython, Numpy, mlpy, random, matplotlib
+etc.. and requires all of these dependencies installed to run
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - -  - - - - - - - - - - - -
+There are  3 classes in this package
+class - -
+    1) read_datasets
+            datasets = read_datasets(CDS training, NORF training, random training)
+    2) training_model
+            model = training_model(datasets, model_type)
+            model_type = string ("Combined", "Positional", "Compositional")
+            training the model : model.make_model()
+            saving the trained model : model.save()
+            get weights: make.give_weights(csv_file)
+            csv_file = string ("File name for the weights output")
+    3)Predictor
+            predictor = predictor(record, positional_model, compositional_model, combined_model)
+            record = string (Fasta file of the smORFs for prediction)
+            positional_model, compositional_model, combined_model = string (Models output of training_model class)
+            
+    """
+
+
+# UTR and DTR lenghts
+
+UTR = int(raw_input("Lenght of the 5' upstream region which is concidered"))
+DTR = int(raw_input("Lenght of the 3' downstream region which is concidered"))
+
+#importing dependencies
+
+import re, numpy , csv, random, os
+import csv , mlpy
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+import numpy as np
+import get_features_comp  , get_features_pos, get_features_pos_only_utr
+
+# Assigning utr lenghts and dtr lengths in feature extraction programs
+get_features_comp.utr,get_features_comp.dtr =  UTR, DTR
+get_features_pos.utr,get_features_pos.dtr =  UTR, DTR
+get_features_pos_only_utr.utr,get_features_pos_only_utr.dtr =  UTR, DTR
+
+# Defining functions
+
+def read_fasta(fastafile, label):
+    return [[i, label] for i in SeqIO.parse(fastafile, "fasta")]
+
+def give_len (fastafile):
+    return len([i for i in SeqIO.parse(fastafile, "fasta")])
+
+#define vetorize
+def vectorize_set_value2(j):
+    for n , i in enumerate(j):
+        try:
+            float(i)
+        except:
+            if i == 'A':
+                j[n] = 1.0
+            if i == 'T':
+                j[n] = 2.0
+            if i == 'G':
+                j[n] = 3.0
+            if i == 'C':
+                j[n] = 4.0
+            if i == 'TGA':
+                j[n] = 1.0
+            if i == 'TAG':
+                j[n] = 2.0
+            if i == 'TAA':
+                j[n] = 3.0
+            if i not in ['A','T','G','C','TGA','TAG','TAA']:
+                j[n] = 0.0
+    return j
+
+def select_fet2(seq, clas, type_fet):
+    if type_fet in ["Comp" , "composition", "c","C", "compositional", "comp"]:
+        fet_lis = get_features_comp.get_fet_predictor(seq)
+    #print len(feature_selected)
+    elif type_fet in ["pos", "positional", "p", "P", "Pos"]:
+        fet_lis = get_features_pos_only_utr.get_fet_predictor(seq) # 
+    elif type_fet in ["U","u","positional_utr", "utr", "UTR"]:
+        fet_lis = get_features_pos_only_utr.get_fet_predictor(seq)
+    else:
+        pass
+    return vectorize_set_value2(fet_lis)+[clas]
+
+def select_fet1(seq,type_fet):
+    if type_fet in ["Comp" , "composition", "c","C", "compositional","comp"]:
+        fet_lis = get_features_comp.get_fet_predictor(seq)
+    #print len(feature_selected)
+    elif type_fet in ["pos", "positional", "p", "P", "Pos"]:
+        fet_lis = get_features_pos_only_utr.get_fet_predictor(seq)
+    elif type_fet in ["U","u","positional_utr", "utr", "UTR"]:
+        fet_lis = get_features_pos_only_utr.get_fet_predictor(seq)
+    else:
+        pass
+    return vectorize_set_value2(fet_lis)
+
+# - - - - - - - - - - -
+
+# - - - - - - - - - - - 
+# making classes
+
+class read_datasets:	
+    def __init__(self, cds, norf, rorf):
+	random.seed(1)
+        self.cds = cds
+        self.norf = norf
+        self.rorf = rorf
+        self.combine_data = read_fasta(cds, "1") + read_fasta(norf, "0") + read_fasta(rorf, "0")
+        self.random_sample = random.sample(range(give_len(cds)+give_len(norf)+give_len(rorf)), (give_len(cds)+give_len(norf)+give_len(rorf))/2 )
+        self.len = give_len(cds)+give_len(norf)+give_len(rorf)
+    def training(self):
+        return [self.combine_data[-1]] + [self.combine_data[i] for i in self.random_sample]
+    def testing(self):
+        testing_sample = [i for i in range(self.len) if i not in self.random_sample]
+        return [self.combine_data[i] for i in testing_sample]
+
+class predictor():
+    def __init__(self, record, positional_model, compositional_model, combined_model):
+        self.record = record
+        self.pos_model = mlpy.LibLinear.load_model(positional_model)
+        self.comp_model = mlpy.LibLinear.load_model(compositional_model)
+        self.comb_model = mlpy.LibLinear.load_model(combined_model)
+    UTR1 = UTR
+    DTR1 = DTR
+    record_type = "fasta_file"
+    final_score_list  = [["Positional score","Compositional score", "Overall score", "length" ]]
+    final_score_list = []
+    def give_scores(self, temp_file_name):
+        if self.record_type == "fasta_file":
+            with open(temp_file_name, "a") as f:
+                csvwriter = csv.writer(f, delimiter = ",")
+                for i in SeqIO.parse(self.record, "fasta"):
+                    try:
+                        seq_len = len(i.seq[self.UTR1:-self.DTR1])
+                        listk = [self.pos_model.pred_probability(select_fet1(i, "u"))[1], self.comp_model.pred_probability(select_fet1(i, "c"))[1]]
+                        comb_pred = self.comb_model.pred_probability(listk)[1]# the last braket value for old models its 0 , for new its 1.
+                        csvwriter.writerow([listk[0] , listk[1] , comb_pred, seq_len])
+                        #self.final_score_list.append([listk[0] , listk[1] , comb_pred, seq_len])
+                    except:
+                        pass
+        else:
+            print "Select valid options"

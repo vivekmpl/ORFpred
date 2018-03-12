@@ -1,0 +1,9 @@
+solver_type L1R_L2LOSS_SVC
+nr_class 2
+label 0 1
+nr_feature 2
+bias 1
+w
+-2.330260944671759 
+-8.6761226527095 
+5.544010625720464 
